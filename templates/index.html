@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <title>Fire Chat</title>
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.3/css/bulma.min.css">
+  <link rel="stylesheet" href="https://pro.fontawesome.com/releases/v5.10.0/css/all.css" integrity="sha384-AYmEC3Yw5cVb3ZcuHtOA93w35dYTsvhLPVnYs9eStHfGJvOvKxVfELGroGkvsg+p" crossorigin="anonymous"/>
+</head>
+<body>
+  <nav class="navbar is-danger" role="navigation">
+    <div class="navbar-brand">
+      <h1 class="navbar-item is-size-3">Fire Chat</h1>
+    </div>
+    <div class="navbar-menu">
+      <div class="navbar-end">
+        <div class="navbar-item">
+          <div class="select">
+            <select name="topic" id="topic">
+              <option value="">Choose Topic</option>
+              <option value="pet">Pet</option>
+              <option value="video_game">Video Game</option>
+              <option value="sport">Sport</option>
+              <option value="comic">Comic</option>
+              <option value="music">Music</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+  </nav>
+  <div class="container is-max-desktop mt-6">
+    <form>
+      <div class="field">
+        <label class="label">Name</label>
+        <div class="control has-icons-left">
+          <input class="input" type="text" name="name" id="name" placeholder="Your name">
+          <span class="icon is-small is-left"><i class="fas fa-user"></i></span>
+        </div>
+      </div>
+      <div class="field">
+        <label class="label">Message</label>
+        <div class="control">
+          <textarea class="textarea" name="message" id="message" placeholder="Message to send"></textarea>
+        </div>
+      </div>
+      <div class="field">
+        <div class="control">
+          <input type="submit" id="submit" class="button is-link">
+        </div>
+      </div>
+  </div>
+
+  <div class="container is-max-desktop mt-6 content">
+    <ul id="messages">
+      <li>It's a beautiful day today.</li>
+      <li>Hello there.</li>
+    </ul>
+  </div>
+
+  <script type="module">
+    // TODO: Place your web app's Firebase configuration here.
+    const firebaseConfig = {
+      apiKey: "xxx",
+      authDomain: "xxx",
+      projectId: "xxx",
+      storageBucket: "xxx",
+      messagingSenderId: "xxx",
+      appId: "xxx",
+      measurementId: "xxx"
+    };
+
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.0/firebase-app.js";
+    const app = initializeApp(firebaseConfig);
+
+    //--------------------------------
+    // Send messages to Firestore
+
+    // Initialize Firestore
+    import {
+      addDoc,
+      collection,
+      getFirestore,
+      serverTimestamp,
+    } from "https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore.js";
+    const db = getFirestore();
+
+
+    // Event hander to send messages
+    const sendMessage = async (e) => {
+      e.preventDefault();
+
+      const topic = document.getElementById("topic").value;
+
+      if (!topic) {
+        alert("You must choose a topic!");
+        return;
+      }
+
+      try {
+        const docRef = await addDoc(collection(db, topic), {
+          name: document.getElementById("name").value,
+          message: document.getElementById("message").value,
+          timestamp: serverTimestamp(),
+        });
+        console.log("Document written with ID: ", docRef.id);
+        document.getElementById("message").value = "";
+      } catch (e) {
+        console.error("Error adding document: ", e);
+        alert(e);
+      }
+    };
+
+    document.getElementById("submit").onclick = sendMessage;
+
+    //--------------------------------
+    // Subscribe messages on Firestore
+
+    import {
+      onSnapshot,
+      orderBy,
+      query,
+    } from "https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore.js";
+
+    var unsubscribe;
+
+    const onChangeTopic = (event) => {
+      if (unsubscribe) { unsubscribe(); }
+      const parent = document.getElementById("messages");
+      parent.innerHTML = "";
+
+      const q = query(collection(db, event.target.value), orderBy("timestamp"));
+      unsubscribe = onSnapshot(q, (snapshot) => {
+        snapshot.docChanges().forEach((change) => {
+          if (change.type !== "added") { return; }
+          const li = document.createElement("li");
+          li.appendChild(document.createTextNode(`${change.doc.data().name}: ${change.doc.data().message}`));
+          parent.insertBefore(li, parent.firstElementChild);
+        });
+      });
+    };
+
+    document.getElementById("topic").onchange = onChangeTopic;
+  </script>
+</body>
+</html>
